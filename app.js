@@ -205,18 +205,14 @@ function processItems(items, reset) {
                || item.cover || item.thumbnail || item.cover_url || '';
 
     const uniqueId = author.uniqueId || author.unique_id || author.nickname || author.user_id || '';
-    const videoId  = item.id || item.aweme_id || item.video_id || item.id_str || item.aweme_id_str || video.id || '';
+    const videoId  = item.id || item.aweme_id || item.video_id || item.id_str || item.aweme_id_str || '';
     
     // 🔥 Organic / Public Only Filter
-    // Standard TikTok videos have numerical IDs (usually 19 digits).
-    // Let's be careful: if we have NO ID at all, we might show a broken video,
-    // but if the ID exists and is NOT numeric (like 'v0...'), it's definitely an Ad/Internal.
+    // Standard TikTok videos have numerical IDs. 
+    // Ads/Internal IDs (v0...) contain letters.
+    // We only skip if the ID exists and contains letters.
     const vIdStr = String(videoId).trim();
-    const isOrganic = vIdStr && /^\d+$/.test(vIdStr);
-    
-    // We only skip if we found an ID and it's definitely NOT organic (contains letters)
-    // If it's a numeric ID, we proceed.
-    if (vIdStr && !isOrganic) return; 
+    if (vIdStr && /[a-zA-Z]/.test(vIdStr)) return; 
 
     let cleanId    = String(uniqueId).replace(/^@/, '').trim();
 
