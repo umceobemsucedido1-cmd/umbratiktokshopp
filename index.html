@@ -189,6 +189,18 @@ body::after {
   box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
 }
 
+.topbar-link.purple {
+  color: var(--accent);
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.topbar-link.purple:hover {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
 /* LAYOUT */
 .layout { display: flex; padding-top: 72px; min-height: 100vh; }
 
@@ -593,17 +605,72 @@ select {
 .modal {
   background: var(--surface);
   border: 1px solid var(--border-bright);
-  border-radius: 30px;
+  border-radius: 24px;
   width: 100%;
-  max-width: 600px;
-  padding: 2.5rem;
+  max-width: 440px;
+  max-height: 85vh;
+  padding: 1.5rem;
   position: relative;
   box-shadow: 0 40px 100px rgba(0,0,0,0.8);
   transform: translateY(20px);
   transition: all 0.3s ease;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .modal-bg.open .modal { transform: translateY(0); }
+
+/* Compact Modal Content */
+.modal-content-wrap.compact { display: flex; flex-direction: column; gap: 1rem; }
+
+.modal-media-vertical {
+  width: 100%;
+  aspect-ratio: 9/16 !important;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.modal-media-vertical img { width: 100%; height: 100%; object-fit: cover; }
+
+.modal-details-compact { display: flex; flex-direction: column; gap: 1rem; }
+
+.modal-header-compact { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.modal-author-name { font-weight: 800; font-size: 1.1rem; color: var(--accent); }
+.modal-engagement-tag { font-size: 0.6rem; font-family: 'Space Mono', monospace; padding: 4px 8px; border-radius: 6px; background: var(--surface-accent); color: var(--text-muted); }
+.modal-engagement-tag.high { color: var(--cyan); background: var(--cyan-glow); border: 1px solid var(--cyan); }
+
+.modal-desc-compact { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; max-height: 4.2em; overflow-y: auto; padding-right: 4px; }
+
+.modal-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  background: var(--surface-accent);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.ms-mini { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ms-mini strong { font-size: 1rem; color: var(--text); }
+.ms-mini span { font-size: 0.55rem; font-family: 'Space Mono', monospace; color: var(--text-dim); text-transform: uppercase; }
+
+.modal-actions-compact { display: grid; grid-template-columns: 3fr 1fr; gap: 0.75rem; }
+
+.modal-promo-compact {
+  padding: 1rem;
+  background: var(--gold-gradient);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.2);
+}
+
+.promo-link { text-decoration: none; color: #000; font-size: 0.75rem; line-height: 1.3; }
+.promo-link strong { display: block; font-size: 0.85rem; }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -637,6 +704,7 @@ select {
   <div class="topbar-right">
     <div class="topbar-links">
       <a class="topbar-link gold" href="https://pay.cakto.com.br/3bs9cfh_650634" target="_blank">📚 Monetização Pro</a>
+      <a class="topbar-link purple" href="https://umbrahubb.vercel.app/#" target="_blank">🌑 Umbra Hub</a>
     </div>
     <div class="live-badge"><div class="live-dot"></div> LIVE NOW</div>
     <div class="key-indicator" id="key-hdr">CONNECTING...</div>
@@ -656,6 +724,10 @@ select {
     <button class="nav-item" onclick="setKeyword('dropshipping produto',this)"><span class="icon">📦</span><span>Dropshipping</span></button>
     <button class="nav-item" onclick="setKeyword('afiliados tiktok shop',this)"><span class="icon">🤝</span><span>Afiliados</span></button>
     <button class="nav-item" onclick="setKeyword('produto viral vendas',this)"><span class="icon">🚀</span><span>Virais Vendas</span></button>
+
+    <div class="sidebar-section">Influencers & Shops</div>
+    <button class="nav-item" id="nav-shop-profiles" onclick="setMode('shopProfiles',this)"><span class="icon">🏘️</span><span>Shop Profiles</span><span class="nav-badge hot">NEW</span></button>
+    <button class="nav-item" onclick="setKeyword('vendedor tiktok shop brasil',this)"><span class="icon">🛍️</span><span>Vendedores BR</span></button>
 
     <div class="sidebar-section">Analytics</div>
     <div style="padding: 0.5rem">
@@ -682,11 +754,11 @@ select {
           <p class="hero-desc">Descubra tendências antes que elas viralizem. Analise produtos, monitore a concorrência e escale sua operação de TikTok Shop em tempo real.</p>
           <div class="hero-actions">
             <a class="btn btn-purple" href="https://pay.cakto.com.br/3bs9cfh_650634" target="_blank" id="cta-monetize">
-              <span>🚀</span> Começar Agora
+              <span>📚</span> Aprenda do zero até monetizar seu canal dark
             </a>
-            <button class="btn btn-ghost" onclick="reload()" id="btn-refresh">
-              <span>↺</span> Atualizar Feed
-            </button>
+            <a class="btn btn-ghost" href="https://umbrahubb.vercel.app/#" target="_blank" id="btn-visit-hub">
+              <span>🌑</span> Acessar Umbra Hub
+            </a>
           </div>
         </div>
       </div>
