@@ -101,6 +101,21 @@ async function fetchAds() {
   return extractItems(d.data);
 }
 
+async function fetchShopProfiles() {
+  const region = document.getElementById('region-sel').value;
+  // Search for top tiktok shop related users
+  const d = await apiFetch(`/api/tiktok/search/user?keywords=${encodeURIComponent('tiktok shop affiliate shopify content creator')}&count=20&region=${region}`);
+  // We extract videos from these users if possible, or just show their most recent videos
+  // For simplicity in this UI, we search for videos from these types of profiles
+  const users = d.data?.data?.users || [];
+  if (users.length > 0) {
+     // Fetch videos for the first few users found
+     const firstUser = users[0].unique_id || users[0].uniqueId;
+     return await fetchKeyword(`@${firstUser} tiktok shop`);
+  }
+  return await fetchKeyword('tiktok shop showcase product');
+}
+
 async function fetchKeyword(kw) {
   const region = document.getElementById('region-sel').value;
   try {
@@ -144,6 +159,7 @@ async function loadVideos(reset = true) {
     else if (mode === 'explore')  items = await fetchExplore();
     else if (mode === 'shop')     items = await fetchShop();
     else if (mode === 'ads')      items = await fetchAds();
+    else if (mode === 'shopProfiles') items = await fetchShopProfiles();
     else if (mode === 'keyword')  items = await fetchKeyword(keyword);
 
     processItems(items, reset);
@@ -189,21 +205,24 @@ function processItems(items, reset) {
                || item.cover || item.thumbnail || item.cover_url || '';
 
     // 3. Robust URL Construction (Fix for "Página indisponível")
-    const uniqueId = author.uniqueId || author.unique_id || author.nickname || author.user_id || '';
-    const videoId  = item.id || item.aweme_id || item.video_id || '';
+    let url = item.share_url || item.video_url || item.video_link || '';
     
-    // Clean uniqueId (ensure no spaces, handle @)
-    let cleanId = uniqueId.replace(/^@/, '').trim();
-    
-    let url = '';
-    if (videoId) {
-      if (cleanId) {
-        url = `https://www.tiktok.com/@${cleanId}/video/${videoId}`;
+    if (!url) {
+      const uniqueId = author.uniqueId || author.unique_id || author.nickname || author.user_id || '';
+      const videoId  = item.id || item.aweme_id || item.video_id || '';
+      
+      // Clean uniqueId (ensure no spaces, handle @)
+      let cleanId = String(uniqueId).replace(/^@/, '').trim();
+      
+      if (videoId) {
+        if (cleanId && !cleanId.includes(' ') && isNaN(cleanId)) {
+          url = `https://www.tiktok.com/@${cleanId}/video/${videoId}`;
+        } else {
+          url = `https://www.tiktok.com/video/${videoId}`;
+        }
       } else {
-        url = `https://www.tiktok.com/video/${videoId}`;
+        url = cleanId ? `https://www.tiktok.com/@${cleanId}` : 'https://www.tiktok.com';
       }
-    } else {
-      url = cleanId ? `https://www.tiktok.com/@${cleanId}` : 'https://www.tiktok.com';
     }
 
     const engRate = views > 0 ? (likes / views) : 0;
@@ -256,11 +275,12 @@ function applyFilter() {
 // ─── RENDER ───────────────────────────────
 function renderGrid() {
   const modeLabels = {
-    trending: 'TRENDING NOW',
-    shop:     'TIKTOK SHOP INSIGHTS',
-    ads:      'ADS GALLERY',
-    explore:  'EXPLORE FEED',
-    keyword:  keyword.toUpperCase()
+    trending:     'TRENDING NOW',
+    shop:         'TIKTOK SHOP INSIGHTS',
+    ads:          'ADS GALLERY',
+    explore:      'EXPLORE FEED',
+    shopProfiles: 'SHOP PROFILES FEED',
+    keyword:      keyword.toUpperCase()
   };
   
   const labelEl = document.getElementById('grid-label');
@@ -324,64 +344,43 @@ function openModal(idx) {
   const modalBody = document.getElementById('modal-body');
   
   modalBody.innerHTML = `
-    <div class="modal-content-wrap">
-      <div class="modal-main-row">
-        <div class="modal-media">
-          ${v.cover 
-            ? `<img src="${v.cover}" alt="@${v.author}" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=500&auto=format&fit=crop'">`
-            : '<div class="vthumb-ph">🎬</div>'}
-          <div class="modal-play-overlay"><span>▶</span></div>
+    <div class="modal-content-wrap compact">
+      <div class="modal-media-vertical">
+        ${v.cover 
+          ? `<img src="${v.cover}" alt="@${v.author}" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=500&auto=format&fit=crop'">`
+          : '<div class="vthumb-ph">🎬</div>'}
+        <div class="modal-play-overlay"><span>▶</span></div>
+      </div>
+      
+      <div class="modal-details-compact">
+        <div class="modal-header-compact">
+          <div class="modal-author-name">@${v.author}</div>
+          <div class="modal-engagement-tag ${v.isHighEng ? 'high' : ''}">${v.isHighEng ? '💎 EXCELLENT' : '📈 TRENDING'}</div>
         </div>
         
-        <div class="modal-details">
-          <div class="modal-header">
-            <div class="modal-author-info">
-              <div class="modal-author-name">@${v.author}</div>
-              <div class="modal-engagement-tag ${v.isHighEng ? 'high' : ''}">${v.isHighEng ? '💎 EXCELLENT ENGAGEMENT' : '📈 GROWING'}</div>
-            </div>
-          </div>
-          
-          <div class="modal-desc-box">
-             <p>${v.desc}</p>
-          </div>
-
-          <div class="modal-stats-grid">
-            <div class="ms-item">
-              <span class="ms-label">VIEWS</span>
-              <span class="ms-value">${fmt(v.views)}</span>
-            </div>
-            <div class="ms-item">
-              <span class="ms-label">LIKES</span>
-              <span class="ms-value">${fmt(v.likes)}</span>
-            </div>
-            <div class="ms-item">
-              <span class="ms-label">ENG.%</span>
-              <span class="ms-value" style="color: var(--accent)">${engPct}%</span>
-            </div>
-            <div class="ms-item">
-              <span class="ms-label">EST. SALES</span>
-              <span class="ms-value" style="color: var(--green)">${fmt(v.est)}</span>
-            </div>
-          </div>
-
-          <div class="modal-actions-row">
-            <a href="${v.url}" target="_blank" class="btn btn-purple" style="flex: 1">
-              <span>▶</span> Open on TikTok
-            </a>
-            <button class="btn btn-ghost" onclick="copyUrl('${v.url}')" title="Copy Link">
-              <span>📋</span>
-            </button>
-          </div>
+        <div class="modal-desc-compact">
+           <p>${v.desc}</p>
         </div>
-      </div>
 
-      <div class="modal-footer-promo">
-        <div class="promo-card gold">
-          <div class="promo-text">
-            <strong>Monetização Pro</strong>
-            <p>Aprenda a escalar canais de cortes e shop.</p>
-          </div>
-          <a href="https://pay.cakto.com.br/3bs9cfh_650634" target="_blank" class="btn btn-purple" style="padding: 8px 16px; font-size: 0.7rem;">Saber Mais</a>
+        <div class="modal-stats-strip">
+          <div class="ms-mini"><strong>${fmt(v.views)}</strong><span>Views</span></div>
+          <div class="ms-mini"><strong>${fmt(v.likes)}</strong><span>Likes</span></div>
+          <div class="ms-mini"><strong>${engPct}%</strong><span>Eng.</span></div>
+        </div>
+
+        <div class="modal-actions-compact">
+          <a href="${v.url}" target="_blank" class="btn btn-purple">
+            🚀 Open TikTok
+          </a>
+          <button class="btn btn-ghost" onclick="copyUrl('${v.url}')">
+            📋 Copy
+          </button>
+        </div>
+
+        <div class="modal-promo-compact">
+          <a href="https://pay.cakto.com.br/3bs9cfh_650634" target="_blank" class="promo-link">
+            📚 <strong>Curso Dark:</strong> Aprenda a monetizar seu canal do zero
+          </a>
         </div>
       </div>
     </div>
