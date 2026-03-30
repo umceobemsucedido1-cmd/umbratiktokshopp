@@ -45,20 +45,20 @@ const TIKTOK_API_KEYS = [
   "d70b30e481msh7c765f83c46e76ep1bb4fcjsn47bca36f7068"
 ];
 
-const SCRAPER_HOST  = "tiktok-scraper7.p.rapidapi.com";
+const SCRAPER_HOST = "tiktok-scraper7.p.rapidapi.com";
 const TIKTOKAPI_HOST = "tiktok-api23.p.rapidapi.com";
 
 // Key index state (per API)
 let scraperIdx = 0;
-let tiktokIdx  = 0;
+let tiktokIdx = 0;
 
 // Track dead keys
-const scraperDead  = new Set();
-const tiktokDead   = new Set();
+const scraperDead = new Set();
+const tiktokDead = new Set();
 
 // Request counters
 let scraperReqs = 0;
-let tiktokReqs  = 0;
+let tiktokReqs = 0;
 
 // ─────────────────────────────────────────────
 //  Key rotation helpers
@@ -139,7 +139,7 @@ async function proxyFetch(host, path, params, keys, getKey, rotateKey, counter, 
 }
 
 const scraperCounter = { count: 0 };
-const tiktokCounter  = { count: 0 };
+const tiktokCounter = { count: 0 };
 
 // ─────────────────────────────────────────────
 //  SIMPLE CACHE — 15 min TTL
@@ -177,7 +177,7 @@ setInterval(() => {
 app.get('/api/trending', async (req, res) => {
   const { region = 'BR', count = 20, cursor = 0 } = req.query;
   const cacheKey = `trending:${region}:${count}:${cursor}`;
-  
+
   const cached = getCachedData(cacheKey);
   if (cached) return res.json(cached);
 
@@ -186,7 +186,7 @@ app.get('/api/trending', async (req, res) => {
     { keywords: 'TikTokShop', count, cursor, region, publish_time: 0, sort_type: 0 },
     SCRAPER_KEYS, getScraperKey, rotateScraperKey, scraperCounter
   );
-  
+
   setCachedData(cacheKey, result);
   res.json(result);
 });
@@ -243,7 +243,7 @@ app.get('/api/post', async (req, res) => {
 app.get('/api/tiktok/trending', async (req, res) => {
   const { region = 'BR', count = 20, cursor = 0 } = req.query;
   const cacheKey = `tiktok_trending:${region}:${count}:${cursor}`;
-  
+
   const cached = getCachedData(cacheKey);
   if (cached) return res.json(cached);
 
@@ -337,6 +337,24 @@ app.get('/api/tiktok/shop/product', async (req, res) => {
     { product_id },
     TIKTOK_API_KEYS, getTiktokKey, rotateTiktokKey, tiktokCounter
   );
+  res.json(result);
+});
+
+// Search User (New - for Shop Profiles)
+app.get('/api/tiktok/search/user', async (req, res) => {
+  const { keywords, count = 10, cursor = 0, region = 'BR' } = req.query;
+  const cacheKey = `user_search:${keywords}:${region}:${count}:${cursor}`;
+
+  const cached = getCachedData(cacheKey);
+  if (cached) return res.json(cached);
+
+  const result = await proxyFetch(
+    TIKTOKAPI_HOST, '/api/search/user',
+    { keywords, count, cursor, region },
+    TIKTOK_API_KEYS, getTiktokKey, rotateTiktokKey, tiktokCounter
+  );
+
+  setCachedData(cacheKey, result);
   res.json(result);
 });
 
