@@ -4,14 +4,14 @@
 ═══════════════════════════════════════════ */
 
 // ─── STATE ───────────────────────────────
-let allVideos  = [];
-let filtered   = [];
-let cursor     = 0;
-let loading    = false;
-let mode       = 'trending';
-let keyword    = '';
+let allVideos = [];
+let filtered = [];
+let cursor = 0;
+let loading = false;
+let mode = 'trending';
+let keyword = '';
 let filterMode = 'all';
-let autoTimer  = null;
+let autoTimer = null;
 let totalSales = 0;
 let totalViews = 0;
 let statusData = null;
@@ -25,17 +25,17 @@ async function pollStatus() {
     updateHdr();
     document.getElementById('s-reqs').textContent =
       fmt((statusData.scraper.requests || 0) + (statusData.tiktokApi.requests || 0));
-  } catch {}
+  } catch { }
 }
 
 function renderKeyPanels() {
   if (!statusData) return;
   const renderPanel = (el, current, total, dead) => {
     if (!el) return;
-    el.innerHTML = Array.from({length: total}, (_, i) => {
+    el.innerHTML = Array.from({ length: total }, (_, i) => {
       const st = dead.includes(i) ? 'dead' : i === current - 1 ? 'active' : 'used';
       const ic = st === 'active' ? '●' : st === 'dead' ? '✕' : '○';
-      return `<div class="kbadge ${st}">${ic} K${i+1}</div>`;
+      return `<div class="kbadge ${st}">${ic} K${i + 1}</div>`;
     }).join('');
   };
   renderPanel(
@@ -80,7 +80,7 @@ async function fetchTrending() {
         return items;
       }
     }
-  } catch(e) { console.warn('[trending] TikTok API falhou:', e.message); }
+  } catch (e) { console.warn('[trending] TikTok API falhou:', e.message); }
 
   // Fallback: Scraper
   try {
@@ -90,7 +90,7 @@ async function fetchTrending() {
       cursor = d.data?.data?.cursor || d.data?.cursor || cursor + 20;
       return items;
     }
-  } catch(e) { console.warn('[trending] Scraper também falhou:', e.message); }
+  } catch (e) { console.warn('[trending] Scraper também falhou:', e.message); }
 
   return [];
 }
@@ -104,7 +104,7 @@ async function fetchExplore() {
       cursor = d.data?.data?.cursor || cursor + 20;
       return items;
     }
-  } catch(e) { console.warn('[explore] falhou:', e.message); }
+  } catch (e) { console.warn('[explore] falhou:', e.message); }
   return [];
 }
 
@@ -117,7 +117,7 @@ async function fetchShop() {
       cursor = d.data?.data?.cursor || cursor + 20;
       return items;
     }
-  } catch(e) { console.warn('[shop] falhou:', e.message); }
+  } catch (e) { console.warn('[shop] falhou:', e.message); }
   return [];
 }
 
@@ -129,7 +129,7 @@ async function fetchAds() {
       cursor = d.data?.data?.cursor || cursor + 20;
       return items;
     }
-  } catch(e) { console.warn('[ads] falhou:', e.message); }
+  } catch (e) { console.warn('[ads] falhou:', e.message); }
   return [];
 }
 
@@ -137,13 +137,17 @@ async function fetchShopProfiles() {
   try {
     const region = document.getElementById('region-sel').value;
     const d = await apiFetch(`/api/tiktok/search/user?keywords=${encodeURIComponent('tiktok shop product affiliate')}&count=15&region=${region}`);
-    const users = d.data?.data?.users || d.data?.users || [];
+    const users = (d.data?.data?.users || d.data?.users || []).slice(0, 3);
+    
     if (users.length > 0) {
-       const u = users[0];
-       const handle = u.unique_id || u.uniqueId || u.nickname;
-       if (handle) return await fetchKeyword(`@${handle} tiktok shop`);
+      const results = await Promise.all(users.map(u => {
+        const handle = u.unique_id || u.uniqueId || u.nickname;
+        return handle ? fetchKeyword(`${handle} tiktok shop`) : [];
+      }));
+      // Interleaves the items from different users
+      return results.flat().filter(id => id);
     }
-  } catch(e) { console.warn('ShopProfiles failed', e); }
+  } catch (e) { console.warn('[shopProfiles] fail', e); }
   return await fetchKeyword('tiktok shop showcase');
 }
 
@@ -160,7 +164,7 @@ async function fetchKeyword(kw) {
         return items;
       }
     }
-  } catch(e) { console.warn('[keyword] TikTok API falhou:', e.message); }
+  } catch (e) { console.warn('[keyword] TikTok API falhou:', e.message); }
 
   // Fallback: Scraper
   try {
@@ -170,7 +174,7 @@ async function fetchKeyword(kw) {
       cursor = d.data?.data?.cursor || cursor + 20;
       return items;
     }
-  } catch(e) { console.warn('[keyword] Scraper falhou:', e.message); }
+  } catch (e) { console.warn('[keyword] Scraper falhou:', e.message); }
 
   return [];
 }
@@ -182,17 +186,17 @@ function extractItems(data) {
   const base = data.data || data;
 
   const found = base.videos
-      || base.posts
-      || base.items
-      || base.itemList
-      || base.aweme_list
-      || base.post_list
-      || data.aweme_list
-      || data.itemList
-      || data.items
-      || data.videos
-      || data.posts
-      || [];
+    || base.posts
+    || base.items
+    || base.itemList
+    || base.aweme_list
+    || base.post_list
+    || data.aweme_list
+    || data.itemList
+    || data.items
+    || data.videos
+    || data.posts
+    || [];
 
   console.log(`[extractItems] encontrados: ${found.length} itens`);
   return Array.isArray(found) ? found : [];
@@ -215,12 +219,12 @@ async function loadVideos(reset = true) {
 
   try {
     let items = [];
-    if      (mode === 'trending')     items = await fetchTrending();
-    else if (mode === 'explore')      items = await fetchExplore();
-    else if (mode === 'shop')         items = await fetchShop();
-    else if (mode === 'ads')          items = await fetchAds();
+    if (mode === 'trending') items = await fetchTrending();
+    else if (mode === 'explore') items = await fetchExplore();
+    else if (mode === 'shop') items = await fetchShop();
+    else if (mode === 'ads') items = await fetchAds();
     else if (mode === 'shopProfiles') items = await fetchShopProfiles();
-    else if (mode === 'keyword')      items = await fetchKeyword(keyword);
+    else if (mode === 'keyword') items = await fetchKeyword(keyword);
 
     console.log(`[loadVideos] items recebidos: ${items.length}`);
     processItems(items, reset);
@@ -260,14 +264,14 @@ function processItems(items, reset) {
 
   items.forEach(item => {
     // 1. Unified Data Extraction
-    const stats  = item.stats || item.statistics || item.statistics_info || {};
+    const stats = item.stats || item.statistics || item.statistics_info || {};
     const author = item.author || item.authorInfo || item.author_info || {};
-    const video  = item.video  || item.video_info || {};
+    const video = item.video || item.video_info || {};
 
-    const views    = parseInt(stats.playCount || stats.play_count || stats.view_count || item.play_count || 0);
-    const likes    = parseInt(stats.diggCount || stats.digg_count || stats.like_count || item.digg_count || 0);
+    const views = parseInt(stats.playCount || stats.play_count || stats.view_count || item.play_count || 0);
+    const likes = parseInt(stats.diggCount || stats.digg_count || stats.like_count || item.digg_count || 0);
     const comments = parseInt(stats.commentCount || stats.comment_count || 0);
-    const shares   = parseInt(stats.shareCount || stats.share_count || 0);
+    const shares = parseInt(stats.shareCount || stats.share_count || 0);
 
     totalViews += views;
     const est = estimateSales(views, likes);
@@ -275,16 +279,22 @@ function processItems(items, reset) {
 
     // 2. Cover / Thumbnail
     const cover = (video.cover || video.originCover || video.dynamicCover
-                || item.cover || item.thumbnail || item.cover_url || '');
+      || item.cover || item.thumbnail || item.cover_url || '');
 
-    const uniqueId = (author.uniqueId || author.unique_id || author.nickname || author.user_id || '');
-    const videoId  = String(item.id || item.aweme_id || item.video_id || item.id_str || item.aweme_id_str || '').trim();
+    const uniqueId = (author.uniqueId || author.unique_id || author.nickname || author.user_id || author.nickname || '');
+    
+    // 🔥 ID Extraction (Resilient to nested objects)
+    let rawId = item.id || item.aweme_id || item.id_str || item.aweme_id_str;
+    if (!rawId || typeof rawId === 'object') {
+       rawId = item.video_id || video.id || (item.video && item.video.id) || '';
+    }
+    const videoId = String(rawId || '').trim();
 
     // 🔥 Filtro Orgânico CORRIGIDO:
-    // - Se videoId está vazio ou é "undefined", deixa passar
-    // - Só filtra IDs que contenham letras (ex: "v0abc123" = anúncio pago)
-    // - IDs numéricos longos (ex: "7382019283746192641") passam normalmente
-    if (videoId && videoId !== 'undefined' && !/^\d+$/.test(videoId)) return;
+    if (videoId && videoId !== 'undefined' && videoId !== '[object Object]' && !/^\d+$/.test(videoId)) {
+      console.warn('[processItems] Item ignorado (Ads/Invalid):', videoId);
+      return;
+    }
 
     const cleanId = String(uniqueId).replace(/^@/, '').trim();
 
@@ -307,20 +317,20 @@ function processItems(items, reset) {
     const descText = item.desc || item.title || item.description || 'Sem descrição';
 
     allVideos.push({
-      id:      videoId || Math.random().toString(36).slice(2),
-      author:  cleanId || 'User',
-      desc:    descText,
+      id: videoId || Math.random().toString(36).slice(2),
+      author: cleanId || 'User',
+      desc: descText,
       cover,
       views, likes, comments, shares, est,
       engRate,
       hasShop: !!(item.product || item.anchors?.length
-               || descText.toLowerCase().includes('shop')
-               || descText.toLowerCase().includes('link')
-               || descText.toLowerCase().includes('comprar')),
-      isViral:   views > 1_000_000,
-      isTrend:   views > 500_000,
+        || descText.toLowerCase().includes('shop')
+        || descText.toLowerCase().includes('link')
+        || descText.toLowerCase().includes('comprar')),
+      isViral: views > 1_000_000,
+      isTrend: views > 500_000,
       isHighEng: engRate > 0.08,
-      ts:    item.createTime || item.create_time || Date.now() / 1000,
+      ts: item.createTime || item.create_time || Date.now() / 1000,
       url
     });
   });
@@ -341,11 +351,11 @@ function filterBy(f, el) {
 function applyFilter() {
   const now = Date.now() / 1000;
   filtered = allVideos.filter(v => {
-    if (filterMode === 'shop')     return v.hasShop;
+    if (filterMode === 'shop') return v.hasShop;
     if (filterMode === 'trending') return v.isTrend;
-    if (filterMode === 'viral')    return v.isViral;
-    if (filterMode === 'new')      return (now - v.ts) < 86400 * 3;
-    if (filterMode === 'higheng')  return v.isHighEng;
+    if (filterMode === 'viral') return v.isViral;
+    if (filterMode === 'new') return (now - v.ts) < 86400 * 3;
+    if (filterMode === 'higheng') return v.isHighEng;
     return true;
   });
   renderGrid();
@@ -354,12 +364,12 @@ function applyFilter() {
 // ─── RENDER ───────────────────────────────
 function renderGrid() {
   const modeLabels = {
-    trending:     'TRENDING NOW',
-    shop:         'TIKTOK SHOP INSIGHTS',
-    ads:          'ADS GALLERY',
-    explore:      'EXPLORE FEED',
+    trending: 'TRENDING NOW',
+    shop: 'TIKTOK SHOP INSIGHTS',
+    ads: 'ADS GALLERY',
+    explore: 'EXPLORE FEED',
     shopProfiles: 'SHOP PROFILES FEED',
-    keyword:      keyword.toUpperCase()
+    keyword: keyword.toUpperCase()
   };
 
   const labelEl = document.getElementById('grid-label');
@@ -381,8 +391,8 @@ function renderGrid() {
     <div class="vcard" style="animation-delay: ${(i % 12) * 0.05}s" onclick="openModal(${allVideos.indexOf(v)})">
       <div class="vthumb">
         ${v.cover
-          ? `<img src="${v.cover}" alt="@${v.author}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=500&auto=format&fit=crop'">`
-          : '<div class="vthumb-ph">🎬</div>'}
+      ? `<img src="${v.cover}" alt="@${v.author}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=500&auto=format&fit=crop'">`
+      : '<div class="vthumb-ph">🎬</div>'}
 
         <div class="vbadge ${v.isViral ? 'vbadge-cyan' : 'vbadge-red'}">
           ${v.hasShop ? '🛒 SHOP' : v.isViral ? '⚡ VIRAL' : '🔥 TREND'}
@@ -409,7 +419,7 @@ function renderGrid() {
 }
 
 function updateStats() {
-  document.getElementById('s-vids').textContent  = fmt(allVideos.length);
+  document.getElementById('s-vids').textContent = fmt(allVideos.length);
   document.getElementById('s-views').textContent = fmt(totalViews);
   document.getElementById('s-sales').textContent = fmt(totalSales);
 }
@@ -426,8 +436,8 @@ function openModal(idx) {
     <div class="modal-content-wrap compact">
       <div class="modal-media-vertical">
         ${v.cover
-          ? `<img src="${v.cover}" alt="@${v.author}" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=500&auto=format&fit=crop'">`
-          : '<div class="vthumb-ph">🎬</div>'}
+      ? `<img src="${v.cover}" alt="@${v.author}" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=500&auto=format&fit=crop'">`
+      : '<div class="vthumb-ph">🎬</div>'}
         <div class="modal-play-overlay"><span>▶</span></div>
       </div>
 
@@ -540,7 +550,7 @@ function fmt(n) {
 
 function estimateSales(views, likes) {
   if (!views) return 0;
-  const eng  = likes / views;
+  const eng = likes / views;
   const conv = eng > 0.10 ? 0.02 : eng > 0.05 ? 0.015 : eng > 0.02 ? 0.01 : 0.005;
   return Math.round(views * conv);
 }
