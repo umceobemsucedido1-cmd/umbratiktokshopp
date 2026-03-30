@@ -206,6 +206,13 @@ function processItems(items, reset) {
 
     const uniqueId = author.uniqueId || author.unique_id || author.nickname || author.user_id || '';
     const videoId  = item.id || item.aweme_id || item.video_id || '';
+    
+    // 🔥 Organic / Public Only Filter
+    // Standard TikTok videos have 19-digit numerical IDs. 
+    // IDs starting with 'v0...' or alphanumeric are typically Ads/Internal/Unlisted.
+    const isOrganic = /^\d+$/.test(String(videoId));
+    if (!isOrganic) return; 
+
     let cleanId    = String(uniqueId).replace(/^@/, '').trim();
 
     // 3. Robust URL Construction (Fix for "Página indisponível")
