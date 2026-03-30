@@ -213,9 +213,11 @@ function processItems(items, reset) {
     const videoId  = (item.id || item.aweme_id || item.video_id || item.id_str || item.aweme_id_str || '');
     
     // 🔥 Organic / Public Only Filter
-    // Standard handles numeric IDs. Only skip if it contains non-numeric chars (v0...).
     const vIdStr = String(videoId).trim();
-    if (vIdStr && isNaN(Number(vIdStr))) return; 
+    // 🔥 Filtro Orgânico (Fix): IDs do TikTok são números gigantes.
+    // O Number() pode falhar ou converter para Científico (NaN/Infinity).
+    // Usamos regex para garantir que é 100% numérico sem perder precisão.
+    if (vIdStr && !/^\d+$/.test(vIdStr)) return;
 
     const cleanId = String(uniqueId).replace(/^@/, '').trim();
 
