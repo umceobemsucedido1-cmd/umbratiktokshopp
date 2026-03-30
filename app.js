@@ -69,36 +69,68 @@ async function apiFetch(path) {
 // ─── LOAD STRATEGIES ──────────────────────
 async function fetchTrending() {
   const region = document.getElementById('region-sel').value;
+
+  // Tenta TikTok API primeiro
   try {
     const d = await apiFetch(`/api/tiktok/trending?region=${region}&count=20&cursor=${cursor}`);
     if (d.ok) {
-      cursor = d.data?.data?.cursor || d.data?.cursor || cursor + 20;
-      return extractItems(d.data);
+      const items = extractItems(d.data);
+      if (items.length > 0) {
+        cursor = d.data?.data?.cursor || d.data?.cursor || cursor + 20;
+        return items;
+      }
     }
-  } catch {}
-  const d = await apiFetch(`/api/trending?region=${region}&count=20&cursor=${cursor}`);
-  cursor = d.data?.data?.cursor || d.data?.cursor || cursor + 20;
-  return extractItems(d.data);
+  } catch(e) { console.warn('[trending] TikTok API falhou:', e.message); }
+
+  // Fallback: Scraper
+  try {
+    const d = await apiFetch(`/api/trending?region=${region}&count=20&cursor=${cursor}`);
+    if (d.ok) {
+      const items = extractItems(d.data);
+      cursor = d.data?.data?.cursor || d.data?.cursor || cursor + 20;
+      return items;
+    }
+  } catch(e) { console.warn('[trending] Scraper também falhou:', e.message); }
+
+  return [];
 }
 
 async function fetchExplore() {
   const region = document.getElementById('region-sel').value;
-  const d = await apiFetch(`/api/tiktok/explore?region=${region}&count=20&cursor=${cursor}`);
-  cursor = d.data?.data?.cursor || cursor + 20;
-  return extractItems(d.data);
+  try {
+    const d = await apiFetch(`/api/tiktok/explore?region=${region}&count=20&cursor=${cursor}`);
+    if (d.ok) {
+      const items = extractItems(d.data);
+      cursor = d.data?.data?.cursor || cursor + 20;
+      return items;
+    }
+  } catch(e) { console.warn('[explore] falhou:', e.message); }
+  return [];
 }
 
 async function fetchShop() {
   const region = document.getElementById('region-sel').value;
-  const d = await apiFetch(`/api/search?keywords=TikTokShop&count=20&cursor=${cursor}&region=${region}`);
-  cursor = d.data?.data?.cursor || cursor + 20;
-  return extractItems(d.data);
+  try {
+    const d = await apiFetch(`/api/search?keywords=TikTokShop&count=20&cursor=${cursor}&region=${region}`);
+    if (d.ok) {
+      const items = extractItems(d.data);
+      cursor = d.data?.data?.cursor || cursor + 20;
+      return items;
+    }
+  } catch(e) { console.warn('[shop] falhou:', e.message); }
+  return [];
 }
 
 async function fetchAds() {
-  const d = await apiFetch(`/api/tiktok/ads/trending?count=20&cursor=${cursor}`);
-  cursor = d.data?.data?.cursor || cursor + 20;
-  return extractItems(d.data);
+  try {
+    const d = await apiFetch(`/api/tiktok/ads/trending?count=20&cursor=${cursor}`);
+    if (d.ok) {
+      const items = extractItems(d.data);
+      cursor = d.data?.data?.cursor || cursor + 20;
+      return items;
+    }
+  } catch(e) { console.warn('[ads] falhou:', e.message); }
+  return [];
 }
 
 async function fetchShopProfiles() {
@@ -117,30 +149,53 @@ async function fetchShopProfiles() {
 
 async function fetchKeyword(kw) {
   const region = document.getElementById('region-sel').value;
+
+  // Tenta TikTok API
   try {
     const d = await apiFetch(`/api/tiktok/search?keywords=${encodeURIComponent(kw)}&count=20&cursor=${cursor}&region=${region}`);
-    if (d.ok && extractItems(d.data).length > 0) {
-      cursor = d.data?.data?.cursor || cursor + 20;
-      return extractItems(d.data);
+    if (d.ok) {
+      const items = extractItems(d.data);
+      if (items.length > 0) {
+        cursor = d.data?.data?.cursor || cursor + 20;
+        return items;
+      }
     }
-  } catch {}
-  const d = await apiFetch(`/api/search?keywords=${encodeURIComponent(kw)}&count=20&cursor=${cursor}&region=${region}`);
-  cursor = d.data?.data?.cursor || cursor + 20;
-  return extractItems(d.data);
+  } catch(e) { console.warn('[keyword] TikTok API falhou:', e.message); }
+
+  // Fallback: Scraper
+  try {
+    const d = await apiFetch(`/api/search?keywords=${encodeURIComponent(kw)}&count=20&cursor=${cursor}&region=${region}`);
+    if (d.ok) {
+      const items = extractItems(d.data);
+      cursor = d.data?.data?.cursor || cursor + 20;
+      return items;
+    }
+  } catch(e) { console.warn('[keyword] Scraper falhou:', e.message); }
+
+  return [];
 }
 
+// ─── EXTRACT ITEMS ────────────────────────
+// Cobre todos os formatos possíveis retornados pelas APIs
 function extractItems(data) {
   if (!data) return [];
-  // Tenta extrair de todas os formatos possíveis das APIs
   const base = data.data || data;
-  return base.videos 
+
+  const found = base.videos
       || base.posts
       || base.items
       || base.itemList
+      || base.aweme_list
+      || base.post_list
+      || data.aweme_list
       || data.itemList
       || data.items
       || data.videos
+      || data.posts
       || [];
+
+  console.log(`[extractItems] encontrados: ${found.length} itens`);
+  return Array.isArray(found) ? found : [];
 }
 
 // ─── LOAD VIDEOS ──────────────────────────
@@ -160,18 +215,19 @@ async function loadVideos(reset = true) {
 
   try {
     let items = [];
-    if      (mode === 'trending') items = await fetchTrending();
-    else if (mode === 'explore')  items = await fetchExplore();
-    else if (mode === 'shop')     items = await fetchShop();
-    else if (mode === 'ads')      items = await fetchAds();
+    if      (mode === 'trending')     items = await fetchTrending();
+    else if (mode === 'explore')      items = await fetchExplore();
+    else if (mode === 'shop')         items = await fetchShop();
+    else if (mode === 'ads')          items = await fetchAds();
     else if (mode === 'shopProfiles') items = await fetchShopProfiles();
-    else if (mode === 'keyword')  items = await fetchKeyword(keyword);
+    else if (mode === 'keyword')      items = await fetchKeyword(keyword);
 
+    console.log(`[loadVideos] items recebidos: ${items.length}`);
     processItems(items, reset);
     await pollStatus();
 
   } catch (err) {
-    console.error(err);
+    console.error('[loadVideos] erro:', err);
     if (allVideos.length === 0) {
       document.getElementById('video-grid').innerHTML =
         `<div class="loader-wrap" style="color:var(--red2)">
@@ -188,7 +244,19 @@ async function loadVideos(reset = true) {
 
 // ─── PROCESS ITEMS ────────────────────────
 function processItems(items, reset) {
-  if (!items?.length) return;
+  if (!items?.length) {
+    console.warn('[processItems] Nenhum item para processar');
+    if (allVideos.length === 0) {
+      document.getElementById('video-grid').innerHTML =
+        `<div class="loader-wrap">
+          <div style="font-size:3rem; opacity:0.2; margin-bottom:1rem;">🛰️</div>
+          <div class="loader-msg">SEM DADOS — TENTE OUTRA REGIÃO OU ABA</div>
+        </div>`;
+    }
+    return;
+  }
+
+  console.log(`[processItems] processando ${items.length} itens`);
 
   items.forEach(item => {
     // 1. Unified Data Extraction
@@ -210,23 +278,22 @@ function processItems(items, reset) {
                 || item.cover || item.thumbnail || item.cover_url || '');
 
     const uniqueId = (author.uniqueId || author.unique_id || author.nickname || author.user_id || '');
-    const videoId  = (item.id || item.aweme_id || item.video_id || item.id_str || item.aweme_id_str || '');
-    
-    // 🔥 Organic / Public Only Filter
-    const vIdStr = String(videoId).trim();
-    // 🔥 Filtro Orgânico (Fix): IDs do TikTok são números gigantes.
-    // O Number() pode falhar ou converter para Científico (NaN/Infinity).
-    // Usamos regex para garantir que é 100% numérico sem perder precisão.
-    if (vIdStr && !/^\d+$/.test(vIdStr)) return;
+    const videoId  = String(item.id || item.aweme_id || item.video_id || item.id_str || item.aweme_id_str || '').trim();
+
+    // 🔥 Filtro Orgânico CORRIGIDO:
+    // - Se videoId está vazio ou é "undefined", deixa passar
+    // - Só filtra IDs que contenham letras (ex: "v0abc123" = anúncio pago)
+    // - IDs numéricos longos (ex: "7382019283746192641") passam normalmente
+    if (videoId && videoId !== 'undefined' && !/^\d+$/.test(videoId)) return;
 
     const cleanId = String(uniqueId).replace(/^@/, '').trim();
 
-    // 3. Robust URL Construction (Fix for "Página indisponível")
+    // 3. Robust URL Construction
     let url = item.share_url || item.video_url || item.video_link || '';
-    
+
     if (!url) {
-      if (videoId) {
-        if (cleanId && !cleanId.includes(' ') && isNaN(cleanId)) {
+      if (videoId && videoId !== 'undefined') {
+        if (cleanId && !cleanId.includes(' ') && isNaN(Number(cleanId))) {
           url = `https://www.tiktok.com/@${cleanId}/video/${videoId}`;
         } else {
           url = `https://www.tiktok.com/video/${videoId}`;
@@ -258,6 +325,7 @@ function processItems(items, reset) {
     });
   });
 
+  console.log(`[processItems] total allVideos: ${allVideos.length}`);
   applyFilter();
   updateStats();
 }
@@ -273,11 +341,11 @@ function filterBy(f, el) {
 function applyFilter() {
   const now = Date.now() / 1000;
   filtered = allVideos.filter(v => {
-    if (filterMode === 'shop')    return v.hasShop;
+    if (filterMode === 'shop')     return v.hasShop;
     if (filterMode === 'trending') return v.isTrend;
-    if (filterMode === 'viral')   return v.isViral;
-    if (filterMode === 'new')     return (now - v.ts) < 86400 * 3;
-    if (filterMode === 'higheng') return v.isHighEng;
+    if (filterMode === 'viral')    return v.isViral;
+    if (filterMode === 'new')      return (now - v.ts) < 86400 * 3;
+    if (filterMode === 'higheng')  return v.isHighEng;
     return true;
   });
   renderGrid();
@@ -293,7 +361,7 @@ function renderGrid() {
     shopProfiles: 'SHOP PROFILES FEED',
     keyword:      keyword.toUpperCase()
   };
-  
+
   const labelEl = document.getElementById('grid-label');
   if (labelEl) {
     labelEl.textContent = `${modeLabels[mode] || mode.toUpperCase()} — ${filtered.length} INTELLIGENCE NODES`;
@@ -315,11 +383,11 @@ function renderGrid() {
         ${v.cover
           ? `<img src="${v.cover}" alt="@${v.author}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=500&auto=format&fit=crop'">`
           : '<div class="vthumb-ph">🎬</div>'}
-        
+
         <div class="vbadge ${v.isViral ? 'vbadge-cyan' : 'vbadge-red'}">
           ${v.hasShop ? '🛒 SHOP' : v.isViral ? '⚡ VIRAL' : '🔥 TREND'}
         </div>
-        
+
         <div class="vviews">▶ ${fmt(v.views)}</div>
         <div class="vplay"><span>▶</span></div>
       </div>
@@ -353,22 +421,22 @@ function openModal(idx) {
 
   const engPct = v.views > 0 ? ((v.likes / v.views) * 100).toFixed(2) : '0.00';
   const modalBody = document.getElementById('modal-body');
-  
+
   modalBody.innerHTML = `
     <div class="modal-content-wrap compact">
       <div class="modal-media-vertical">
-        ${v.cover 
+        ${v.cover
           ? `<img src="${v.cover}" alt="@${v.author}" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=500&auto=format&fit=crop'">`
           : '<div class="vthumb-ph">🎬</div>'}
         <div class="modal-play-overlay"><span>▶</span></div>
       </div>
-      
+
       <div class="modal-details-compact">
         <div class="modal-header-compact">
           <div class="modal-author-name">@${v.author}</div>
           <div class="modal-engagement-tag ${v.isHighEng ? 'high' : ''}">${v.isHighEng ? '💎 EXCELLENT' : '📈 TRENDING'}</div>
         </div>
-        
+
         <div class="modal-desc-compact">
            <p>${v.desc}</p>
         </div>
