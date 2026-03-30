@@ -283,11 +283,12 @@ function processItems(items, reset) {
 
     const uniqueId = (author.uniqueId || author.unique_id || author.nickname || author.user_id || author.nickname || '');
     
-    // 🔥 ID Extraction (Resilient to nested objects)
-    let rawId = item.id || item.aweme_id || item.id_str || item.aweme_id_str;
-    if (!rawId || typeof rawId === 'object') {
-       rawId = item.video_id || video.id || (item.video && item.video.id) || '';
-    }
+    // 🔥 ID Extraction (Prioritize Numeric IDs)
+    const idFields = [item.aweme_id, item.id, item.id_str, item.aweme_id_str, item.video_id, (video && video.id)];
+    let numericId = idFields.find(f => f && /^\d+$/.test(String(f)));
+    let rawId = numericId || item.id || item.aweme_id || item.id_str || '';
+    
+    if (typeof rawId === 'object') rawId = ''; 
     const videoId = String(rawId || '').trim();
 
     // 🔥 Filtro Orgânico CORRIGIDO:
