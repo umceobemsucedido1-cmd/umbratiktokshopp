@@ -600,6 +600,21 @@ select {
   padding: 2rem;
 }
 
+/* MENU TOGGLE */
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text);
+  margin-right: 12px;
+}
+
 .modal-bg.open { display: flex; animation: fadeIn 0.3s ease; }
 
 .modal {
@@ -683,23 +698,55 @@ select {
 }
 
 @media (max-width: 768px) {
-  .sidebar { display: none; }
-  .main { margin-left: 0; padding: 1rem; }
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    bottom: 0;
+    z-index: 2100;
+    width: 260px;
+    display: flex;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+  }
+  .sidebar.open { left: 0; }
+  
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 2050;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .sidebar-overlay.open { display: block; opacity: 1; }
+
+  .main { margin-left: 0; padding: 1rem; width: 100%; border: none; }
   .stats-strip { grid-template-columns: 1fr 1fr; }
   .hero-inner { flex-direction: column; }
   .hero-info { border-left: none; border-top: 1px solid var(--border-bright); }
-  .topbar { padding: 0 1rem; }
+  .topbar { padding: 0 1rem; height: 70px; }
   .topbar-links { display: none; }
+  
+  .menu-toggle { display: flex; }
+  
+  #grid-label { font-size: 0.8rem; }
+  .filter-strip { overflow-x: auto; padding-bottom: 8px; justify-content: flex-start; }
 }
 </style>
 </head>
 <body>
 
 <header class="topbar">
-  <a class="brand" href="/">
-    <div class="brand-icon">🌑</div>
-    <div class="brand-name">UMBRA HUB<small>TikTok Intelligence</small></div>
-  </a>
+  <div style="display:flex; align-items:center;">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <a class="brand" href="/">
+      <div class="brand-icon">🌑</div>
+      <div class="brand-name">UMBRA HUB<small>TikTok Intelligence</small></div>
+    </a>
+  </div>
   
   <div class="topbar-right">
     <div class="topbar-links">
@@ -710,6 +757,8 @@ select {
     <div class="key-indicator" id="key-hdr">CONNECTING...</div>
   </div>
 </header>
+
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 <div class="layout">
   <aside class="sidebar">
@@ -744,7 +793,7 @@ select {
       <div class="hero-inner">
         <div class="hero-video-wrap">
           <iframe
-            src="https://www.youtube.com/embed/M7lc1UVf-VE?autoplay=1&mute=1&controls=0&loop=1&playlist=M7lc1UVf-VE&rel=0&modestbranding=1"
+            src="https://www.youtube.com/embed/DsS1zlvF9U0?autoplay=1&mute=1&controls=0&loop=1&playlist=DsS1zlvF9U0&rel=0&modestbranding=1"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             title="Umbra Hub Marketing Dashboard"></iframe>
         </div>
