@@ -204,16 +204,14 @@ function processItems(items, reset) {
     const cover = video.cover || video.originCover || video.dynamicCover
                || item.cover || item.thumbnail || item.cover_url || '';
 
+    const uniqueId = author.uniqueId || author.unique_id || author.nickname || author.user_id || '';
+    const videoId  = item.id || item.aweme_id || item.video_id || '';
+    let cleanId    = String(uniqueId).replace(/^@/, '').trim();
+
     // 3. Robust URL Construction (Fix for "Página indisponível")
     let url = item.share_url || item.video_url || item.video_link || '';
     
     if (!url) {
-      const uniqueId = author.uniqueId || author.unique_id || author.nickname || author.user_id || '';
-      const videoId  = item.id || item.aweme_id || item.video_id || '';
-      
-      // Clean uniqueId (ensure no spaces, handle @)
-      let cleanId = String(uniqueId).replace(/^@/, '').trim();
-      
       if (videoId) {
         if (cleanId && !cleanId.includes(' ') && isNaN(cleanId)) {
           url = `https://www.tiktok.com/@${cleanId}/video/${videoId}`;
