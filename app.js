@@ -16,6 +16,13 @@ let totalSales = 0;
 let totalViews = 0;
 let statusData = null;
 
+function toggleSidebar() {
+  const sb = document.querySelector('.sidebar');
+  const ov = document.querySelector('.sidebar-overlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('open');
+}
+
 // ─── STATUS POLLING ───────────────────────
 async function pollStatus() {
   try {
@@ -495,17 +502,23 @@ function closeModal(e) {
 
 // ─── NAVIGATION ───────────────────────────
 function setMode(m, el) {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  el.classList.add('active');
+  if (el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+  }
   mode = m; keyword = '';
   loadVideos(true);
+  if (window.innerWidth <= 768) toggleSidebar();
 }
 
 function setKeyword(kw, el) {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  el.classList.add('active');
+  if (el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+  }
   mode = 'keyword'; keyword = kw;
   loadVideos(true);
+  if (window.innerWidth <= 768) toggleSidebar();
 }
 
 function buscarManual() {
@@ -514,6 +527,7 @@ function buscarManual() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   mode = 'keyword'; keyword = val;
   loadVideos(true);
+  if (window.innerWidth <= 768) toggleSidebar();
 }
 
 function reload() { loadVideos(true); }
