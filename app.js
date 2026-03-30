@@ -102,18 +102,17 @@ async function fetchAds() {
 }
 
 async function fetchShopProfiles() {
-  const region = document.getElementById('region-sel').value;
-  // Search for top tiktok shop related users
-  const d = await apiFetch(`/api/tiktok/search/user?keywords=${encodeURIComponent('tiktok shop affiliate shopify content creator')}&count=20&region=${region}`);
-  // We extract videos from these users if possible, or just show their most recent videos
-  // For simplicity in this UI, we search for videos from these types of profiles
-  const users = d.data?.data?.users || [];
-  if (users.length > 0) {
-     // Fetch videos for the first few users found
-     const firstUser = users[0].unique_id || users[0].uniqueId;
-     return await fetchKeyword(`@${firstUser} tiktok shop`);
-  }
-  return await fetchKeyword('tiktok shop showcase product');
+  try {
+    const region = document.getElementById('region-sel').value;
+    const d = await apiFetch(`/api/tiktok/search/user?keywords=${encodeURIComponent('tiktok shop product affiliate')}&count=15&region=${region}`);
+    const users = d.data?.data?.users || d.data?.users || [];
+    if (users.length > 0) {
+       const u = users[0];
+       const handle = u.unique_id || u.uniqueId || u.nickname;
+       if (handle) return await fetchKeyword(`@${handle} tiktok shop`);
+    }
+  } catch(e) { console.warn('ShopProfiles failed', e); }
+  return await fetchKeyword('tiktok shop showcase');
 }
 
 async function fetchKeyword(kw) {
@@ -131,10 +130,16 @@ async function fetchKeyword(kw) {
 }
 
 function extractItems(data) {
-  return data?.data?.videos
-      || data?.data?.posts
-      || data?.itemList
-      || data?.items
+  if (!data) return [];
+  // Tenta extrair de todas os formatos possíveis das APIs
+  const base = data.data || data;
+  return base.videos 
+      || base.posts
+      || base.items
+      || base.itemList
+      || data.itemList
+      || data.items
+      || data.videos
       || [];
 }
 
@@ -201,20 +206,18 @@ function processItems(items, reset) {
     totalSales += est;
 
     // 2. Cover / Thumbnail
-    const cover = video.cover || video.originCover || video.dynamicCover
-               || item.cover || item.thumbnail || item.cover_url || '';
+    const cover = (video.cover || video.originCover || video.dynamicCover
+                || item.cover || item.thumbnail || item.cover_url || '');
 
-    const uniqueId = author.uniqueId || author.unique_id || author.nickname || author.user_id || '';
-    const videoId  = item.id || item.aweme_id || item.video_id || item.id_str || item.aweme_id_str || '';
+    const uniqueId = (author.uniqueId || author.unique_id || author.nickname || author.user_id || '');
+    const videoId  = (item.id || item.aweme_id || item.video_id || item.id_str || item.aweme_id_str || '');
     
     // 🔥 Organic / Public Only Filter
-    // Standard TikTok videos have numerical IDs. 
-    // Ads/Internal IDs (v0...) contain letters.
-    // We only skip if the ID exists and contains letters.
+    // Standard handles numeric IDs. Only skip if it contains non-numeric chars (v0...).
     const vIdStr = String(videoId).trim();
-    if (vIdStr && /[a-zA-Z]/.test(vIdStr)) return; 
+    if (vIdStr && isNaN(Number(vIdStr))) return; 
 
-    let cleanId    = String(uniqueId).replace(/^@/, '').trim();
+    const cleanId = String(uniqueId).replace(/^@/, '').trim();
 
     // 3. Robust URL Construction (Fix for "Página indisponível")
     let url = item.share_url || item.video_url || item.video_link || '';
